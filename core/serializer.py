@@ -54,7 +54,7 @@ class JsonToGraphSerializer:
                 wrapper = ExecutionNodeCallableWrapper(node.type)
                 workflow.add_node(node.id, wrapper)
 
-            for transition in node.transitions:
+            if node.transitions:
                 router = ExpressionEvalRouter(node.transitions)
                 workflow.add_conditional_edges(node.id, router)
 

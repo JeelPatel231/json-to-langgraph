@@ -32,16 +32,34 @@ def main():
                 ),
                 transitions=[
                     Transition(
-                        destination="test_node_2",
+                        destination="if_small",
+                        condition=CommonExpression(expr="nodes.test_node < 2"),
+                    ),
+                    Transition(
+                        destination="if_big",
+                        condition=CommonExpression(expr="nodes.test_node >= 2"),
+                    ),
+                ],
+            ),
+            Node(
+                id="if_small",
+                type=ExecutableNode(
+                    guid="if_small",
+                    input={"a": CommonExpression(expr="nodes.test_node")},
+                    callback=lambda _input, state: _input["a"] + 5,
+                ),
+                transitions=[
+                    Transition(
+                        destination=END,
                     )
                 ],
             ),
             Node(
-                id="test_node_2",
+                id="if_big",
                 type=ExecutableNode(
-                    guid="test_node_2",
-                    input={"b": CommonExpression(expr='input["a"] + 1')},
-                    callback=lambda _input, state: _input["b"] + 2,
+                    guid="if_big",
+                    input={"a": CommonExpression(expr="nodes.test_node")},
+                    callback=lambda _input, state: _input["a"] + 100,
                 ),
                 transitions=[
                     Transition(
@@ -60,8 +78,8 @@ def main():
     serializer = JsonToGraphSerializer()
     realised_workflow = serializer.serialize(workflow_spec)
 
-    a = realised_workflow.compile().invoke(GenericState(input={"a": 1}))
-    print(a["nodes"])
+    a = realised_workflow.compile().invoke(GenericState(input={"a": 0}))
+    print(a)
 
 
 if __name__ == "__main__":
