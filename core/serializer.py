@@ -58,6 +58,7 @@ class JsonToGraphSerializer:
 
             if node.transitions:
                 router = ExpressionEvalRouter(node.transitions)
-                workflow.add_conditional_edges(node.id, router)
+                destinations = [t.destination for t in node.transitions]
+                workflow.add_conditional_edges(node.id, router, path_map=destinations)
 
         return workflow
