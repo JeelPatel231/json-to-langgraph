@@ -27,7 +27,6 @@ class MarkerNode(BaseModel):
 
 NodeInput = dict[str, "CommonExpression | NodeInput"]
 
-# TODO: check if a node can return anything or does it just update the graph state and be done with it.
 ExecutableNodeFunction = Callable[[dict[str, Any], StateLike], dict[str, Any]]
 
 
