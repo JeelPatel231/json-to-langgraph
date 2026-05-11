@@ -1,3 +1,4 @@
+from core.types import Node
 from core.types import ExecutableNodeFunction
 from core.types import CommonExpression
 from core.types import NodeInput
@@ -35,13 +36,14 @@ def evaluate_node_inputs_recursive(node_inputs: NodeInput, state: GenericState):
 
 
 class ExecutionNodeCallableWrapper:
-    def __init__(self, node: ExecutableNode):
+    def __init__(self, node: Node):
+        assert isinstance(node.type, ExecutableNode)
         self.node = node
 
     def __call__(self, state: GenericState):
-        evaluated_inputs = evaluate_node_inputs_recursive(self.node.input, state)
-        node_output = self.node.callback(evaluated_inputs, state)
-        state.nodes[self.node.guid] = node_output
+        evaluated_inputs = evaluate_node_inputs_recursive(self.node.type.input, state)
+        node_output = self.node.type.callback(evaluated_inputs, state)
+        state.nodes[self.node.id] = node_output
         return state
 
 
@@ -51,7 +53,7 @@ class JsonToGraphSerializer:
 
         for node in workflow_spec.nodes:
             if isinstance(node.type, ExecutableNode):
-                wrapper = ExecutionNodeCallableWrapper(node.type)
+                wrapper = ExecutionNodeCallableWrapper(node)
                 workflow.add_node(node.id, wrapper)
 
             if node.transitions:
