@@ -1,14 +1,15 @@
-from typing import Annotated
+from typing import Annotated, TypeAliasType
 from typing import Literal
-from langgraph.typing import StateLike
 from typing import Callable
 from typing import Any
-from dataclasses import field
 from pydantic.fields import Field
 from pydantic import field_validator
-from dataclasses import dataclass
 from pydantic import BaseModel
 import cel
+
+class GenericState(BaseModel):
+    input: dict[str, Any] = Field(default_factory=dict)
+    nodes: dict[str, Any] = Field(default_factory=dict)
 
 
 class CommonExpression(BaseModel):
@@ -22,41 +23,60 @@ class CommonExpression(BaseModel):
 
 # these already exist in the graph
 class MarkerNode(BaseModel):
-    type: Literal["marker"] = field(default="marker", init=False)
+    type: Literal["marker"] = "marker"
 
 
-NodeInput = dict[str, "CommonExpression | NodeInput"]
+NodeInput = TypeAliasType("NodeInput", dict[str, "CommonExpression | NodeInput"])
 
-ExecutableNodeFunction = Callable[[dict[str, Any], StateLike], dict[str, Any]]
+ExecutableNodeFunction = Callable[[dict[str, Any], GenericState], Any]
 
 
-@dataclass(frozen=True)
-class ExecutableNode:
-    type: Literal["executable"] = field(default="executable", init=False)
+class NodeRegistry:
+    def __init__(self):
+        self._registry: dict[str, ExecutableNodeFunction] = {}
+
+    def registered_nodes(self) -> list[str]:
+        return list(self._registry.keys())
+
+    def register(self, guid: str, func: ExecutableNodeFunction):
+        self._registry[guid] = func
+
+    def register_decorator(self, guid: str | None = None):
+        def __inner(func: ExecutableNodeFunction):
+            guid_to_register = guid or func.__name__
+            self.register(guid_to_register, func)
+            return func
+
+        return __inner
+
+    def get(self, guid: str) -> ExecutableNodeFunction:
+        callable_func = self._registry.get(guid)
+        if not callable_func:
+            raise ValueError(f"Node with name '{guid}' not found in registry. Available nodes: {self.registered_nodes()}")
+        return self._registry[guid]
+
+
+global_node_registry = NodeRegistry()
+
+
+class ExecutableNode(BaseModel):
+    type: Literal["executable"] = "executable"
     guid: str
-    callback: ExecutableNodeFunction
-    input: NodeInput = field(default_factory=dict)
+    input: NodeInput = Field(default_factory=dict)
+    callback: ExecutableNodeFunction = Field(exclude=True, default_factory=lambda x: global_node_registry.get(x['guid']))
 
 
-@dataclass
-class Transition:
+class Transition(BaseModel):
     destination: str
-    condition: CommonExpression = field(default_factory=CommonExpression)
+    condition: CommonExpression = Field(default_factory=lambda: CommonExpression())
 
 
-@dataclass
-class Node:
+class Node(BaseModel):
     id: str
     object: Annotated[ExecutableNode | MarkerNode, Field(discriminator="type")]
-    transitions: list[Transition]
+    transitions: list[Transition] = Field(default_factory=list)
 
 
-@dataclass
-class WorkflowSpec:
+class WorkflowSpec(BaseModel):
     name: str
     nodes: list[Node]
-
-
-class GenericState(BaseModel):
-    input: dict[str, Any] = field(default_factory=dict)
-    nodes: dict[str, Any] = field(default_factory=dict)

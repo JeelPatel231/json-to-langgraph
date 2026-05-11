@@ -1,0 +1,82 @@
+{
+  "name": "test_workflow",
+  "nodes": [
+    {
+      "id": "__start__",
+      "object": {
+        "type": "marker"
+      },
+      "transitions": [
+        {
+          "destination": "first_node"
+        }
+      ]
+    },
+    {
+      "id": "first_node",
+      "object": {
+        "type": "executable",
+        "guid": "add_one",
+        "input": {
+          "a": {
+            "expr": "input.a"
+          }
+        }
+      },
+      "transitions": [
+        {
+          "destination": "if_small",
+          "condition": {
+            "expr": "nodes.first_node < 2"
+          }
+        },
+        {
+          "destination": "if_big",
+          "condition": {
+            "expr": "nodes.first_node >= 2"
+          }
+        }
+      ]
+    },
+    {
+      "id": "if_small",
+      "object": {
+        "type": "executable",
+        "guid": "print_node",
+        "input": {
+          "a": {
+            "expr": "nodes.first_node"
+          }
+        }
+      },
+      "transitions": [
+        {
+          "destination": "__end__"
+        }
+      ]
+    },
+    {
+      "id": "if_big",
+      "object": {
+        "type": "executable",
+        "guid": "print_node",
+        "input": {
+          "a": {
+            "expr": "nodes.first_node"
+          }
+        }
+      },
+      "transitions": [
+        {
+          "destination": "__end__"
+        }
+      ]
+    },
+    {
+      "id": "__end__",
+      "object": {
+        "type": "marker"
+      }
+    }
+  ]
+}
