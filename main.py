@@ -16,7 +16,7 @@ def main():
         nodes=[
             Node(
                 id=START,
-                type=MarkerNode(),
+                object=MarkerNode(),
                 transitions=[
                     Transition(
                         destination="test_node",
@@ -25,7 +25,7 @@ def main():
             ),
             Node(
                 id="test_node",
-                type=ExecutableNode(
+                object=ExecutableNode(
                     guid="test_node",
                     input={"a": CommonExpression(expr='input["a"]')},
                     callback=lambda _input, state: _input["a"] + 1,
@@ -43,7 +43,7 @@ def main():
             ),
             Node(
                 id="if_small",
-                type=ExecutableNode(
+                object=ExecutableNode(
                     guid="if_small",
                     input={"a": CommonExpression(expr="nodes.test_node")},
                     callback=lambda _input, state: _input["a"] + 5,
@@ -56,7 +56,7 @@ def main():
             ),
             Node(
                 id="if_big",
-                type=ExecutableNode(
+                object=ExecutableNode(
                     guid="if_big",
                     input={"a": CommonExpression(expr="nodes.test_node")},
                     callback=lambda _input, state: _input["a"] + 100,
@@ -69,7 +69,7 @@ def main():
             ),
             Node(
                 id=END,
-                type=MarkerNode(),
+                object=MarkerNode(),
                 transitions=[],
             ),
         ],

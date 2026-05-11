@@ -36,12 +36,13 @@ def evaluate_node_inputs_recursive(node_inputs: NodeInput, state: GenericState):
 
 class ExecutionNodeCallableWrapper:
     def __init__(self, node: Node):
-        assert isinstance(node.type, ExecutableNode)
+        assert isinstance(node.object, ExecutableNode)
+        self.node_object = node.object
         self.node = node
 
     def __call__(self, state: GenericState):
-        evaluated_inputs = evaluate_node_inputs_recursive(self.node.type.input, state)
-        node_output = self.node.type.callback(evaluated_inputs, state)
+        evaluated_inputs = evaluate_node_inputs_recursive(self.node_object.input, state)
+        node_output = self.node_object.callback(evaluated_inputs, state)
         state.nodes[self.node.id] = node_output
         return state
 
@@ -51,7 +52,7 @@ class JsonToGraphSerializer:
         workflow = StateGraph(GenericState)
 
         for node in workflow_spec.nodes:
-            if isinstance(node.type, ExecutableNode):
+            if isinstance(node.object, ExecutableNode):
                 wrapper = ExecutionNodeCallableWrapper(node)
                 workflow.add_node(node.id, wrapper)
 
