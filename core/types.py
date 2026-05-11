@@ -1,3 +1,5 @@
+from typing import Annotated
+from typing import Literal
 from langgraph.typing import StateLike
 from typing import Callable
 from typing import Any
@@ -19,7 +21,8 @@ class CommonExpression(BaseModel):
 
 
 # these already exist in the graph
-class MarkerNode(BaseModel): ...
+class MarkerNode(BaseModel):
+    type: Literal["marker"]
 
 
 NodeInput = dict[str, "CommonExpression | NodeInput"]
@@ -30,6 +33,7 @@ ExecutableNodeFunction = Callable[[dict[str, Any], StateLike], dict[str, Any]]
 
 @dataclass(frozen=True)
 class ExecutableNode:
+    type: Literal["executable"]
     guid: str
     callback: ExecutableNodeFunction
     input: NodeInput = field(default_factory=dict)
@@ -44,7 +48,7 @@ class Transition:
 @dataclass
 class Node:
     id: str
-    type: ExecutableNode | MarkerNode
+    object: Annotated[ExecutableNode | MarkerNode, Field(discriminator="type")]
     transitions: list[Transition]
 
 
