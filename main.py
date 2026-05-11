@@ -1,3 +1,5 @@
+from core.types import GenericState
+from core.types import CommonExpression
 from langgraph.constants import END
 from langgraph.constants import START
 from core.types import MarkerNode
@@ -24,7 +26,9 @@ def main():
             Node(
                 id="test_node",
                 type=ExecutableNode(
-                    guid="test_node", callback=lambda state: print("test_node")
+                    guid="test_node",
+                    input={"a": CommonExpression(expr='input["a"]')},
+                    callback=lambda _input, state: _input["a"] + 1,
                 ),
                 transitions=[
                     Transition(
@@ -35,7 +39,9 @@ def main():
             Node(
                 id="test_node_2",
                 type=ExecutableNode(
-                    guid="test_node_2", callback=lambda state: print("test_node_2")
+                    guid="test_node_2",
+                    input={"b": CommonExpression(expr='input["a"] + 1')},
+                    callback=lambda _input, state: _input["b"] + 2,
                 ),
                 transitions=[
                     Transition(
@@ -54,8 +60,8 @@ def main():
     serializer = JsonToGraphSerializer()
     realised_workflow = serializer.serialize(workflow_spec)
 
-    a = realised_workflow.compile().invoke({})
-    print(a)
+    a = realised_workflow.compile().invoke(GenericState(input={"a": 1}))
+    print(a["nodes"])
 
 
 if __name__ == "__main__":

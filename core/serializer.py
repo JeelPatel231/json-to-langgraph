@@ -1,3 +1,6 @@
+from core.types import ExecutableNodeFunction
+from core.types import CommonExpression
+from core.types import NodeInput
 from core.types import ExecutableNode
 from core.types import Transition
 from langgraph.graph import StateGraph
@@ -13,9 +16,33 @@ class ExpressionEvalRouter:
         next_routes = []
         for transition in self.transitions:
             # TODO: the state is still pending to be built. Try to keep it as generic as possible.
-            if cel.evaluate(transition.condition.expr, {"state": state.model_dump()}):
+            if cel.evaluate(transition.condition.expr, state.model_dump()):
                 next_routes.append(transition.destination)
         return next_routes
+
+
+def evaluate_node_inputs_recursive(node_inputs: NodeInput, state: GenericState):
+    transformed = dict()
+    for key, value in node_inputs.items():
+        if isinstance(value, CommonExpression):
+            _dumped = state.model_dump()
+            transformed[key] = cel.evaluate(value.expr, _dumped)
+        elif isinstance(value, dict):
+            transformed[key] = evaluate_node_inputs_recursive(value, state)
+        else:
+            raise Exception(f"Invalid type {type(value)} for {key}")
+    return transformed
+
+
+class ExecutionNodeCallableWrapper:
+    def __init__(self, node: ExecutableNode):
+        self.node = node
+
+    def __call__(self, state: GenericState):
+        evaluated_inputs = evaluate_node_inputs_recursive(self.node.input, state)
+        node_output = self.node.callback(evaluated_inputs, state)
+        state.nodes[self.node.guid] = node_output
+        return state
 
 
 class JsonToGraphSerializer:
@@ -24,8 +51,8 @@ class JsonToGraphSerializer:
 
         for node in workflow_spec.nodes:
             if isinstance(node.type, ExecutableNode):
-                runner = node.type.callback
-                workflow.add_node(node.id, runner)
+                wrapper = ExecutionNodeCallableWrapper(node.type)
+                workflow.add_node(node.id, wrapper)
 
             for transition in node.transitions:
                 router = ExpressionEvalRouter(node.transitions)

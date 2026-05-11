@@ -1,10 +1,10 @@
+from langgraph.typing import StateLike
+from typing import Callable
+from typing import Any
 from dataclasses import field
-from langgraph.graph._node import StateNode
 from pydantic.fields import Field
 from pydantic import field_validator
 from dataclasses import dataclass
-from langgraph.typing import ContextT
-from langgraph.typing import NodeInputT
 from pydantic import BaseModel
 import cel
 
@@ -22,11 +22,17 @@ class CommonExpression(BaseModel):
 class MarkerNode(BaseModel): ...
 
 
+NodeInput = dict[str, "CommonExpression | NodeInput"]
+
+# TODO: check if a node can return anything or does it just update the graph state and be done with it.
+ExecutableNodeFunction = Callable[[dict[str, Any], StateLike], dict[str, Any]]
+
+
 @dataclass(frozen=True)
 class ExecutableNode:
     guid: str
-    callback: StateNode[NodeInputT, ContextT]
-    # TODO: input schema
+    callback: ExecutableNodeFunction
+    input: NodeInput = field(default_factory=dict)
 
 
 @dataclass
@@ -48,4 +54,6 @@ class WorkflowSpec:
     nodes: list[Node]
 
 
-class GenericState(BaseModel): ...
+class GenericState(BaseModel):
+    input: dict[str, Any] = field(default_factory=dict)
+    nodes: dict[str, Any] = field(default_factory=dict)
