@@ -1,3 +1,4 @@
+from dataclasses import field
 from langgraph.graph._node import StateNode
 from pydantic.fields import Field
 from pydantic import field_validator
@@ -31,7 +32,7 @@ class ExecutableNode:
 @dataclass
 class Transition:
     destination: str
-    condition: CommonExpression
+    condition: CommonExpression = field(default_factory=CommonExpression)
 
 
 @dataclass

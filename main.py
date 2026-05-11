@@ -2,7 +2,6 @@ from langgraph.constants import END
 from langgraph.constants import START
 from core.types import MarkerNode
 from core.serializer import JsonToGraphSerializer
-from core.types import CommonExpression
 from core.types import Transition
 from core.types import ExecutableNode
 from core.types import Node
@@ -19,7 +18,6 @@ def main():
                 transitions=[
                     Transition(
                         destination="test_node",
-                        condition=CommonExpression(expr="true"),
                     )
                 ],
             ),
@@ -31,7 +29,6 @@ def main():
                 transitions=[
                     Transition(
                         destination="test_node_2",
-                        condition=CommonExpression(expr="1"),
                     )
                 ],
             ),
@@ -43,7 +40,6 @@ def main():
                 transitions=[
                     Transition(
                         destination=END,
-                        condition=CommonExpression(expr="true"),
                     )
                 ],
             ),
