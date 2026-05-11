@@ -13,10 +13,9 @@ class ExpressionEvalRouter:
     def __init__(self, transitions: list[Transition]):
         self.transitions = transitions
 
-    def __call__(self, state: GenericState) -> str:
-        next_routes = []
+    def __call__(self, state: GenericState) -> list[str]:
+        next_routes: list[str] = []
         for transition in self.transitions:
-            # TODO: the state is still pending to be built. Try to keep it as generic as possible.
             if cel.evaluate(transition.condition.expr, state.model_dump()):
                 next_routes.append(transition.destination)
         return next_routes
