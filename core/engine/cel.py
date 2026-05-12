@@ -1,7 +1,7 @@
 
 import cel
 from pydantic import GetPydanticSchema, RootModel, field_validator
-from pydantic_core import core_schema
+from pydantic_core import SchemaValidator, core_schema
 
 
 class CommonExpression(RootModel[str]):
@@ -19,26 +19,31 @@ class CommonExpression(RootModel[str]):
 def cel_schema(tp, handler):
     normal_schema = handler(tp)
 
-    def validator(v, info):
+    def validate(v, info):
         use_cel = (
-            info.context is None or info.context.get("cel_mode", True)
+            info.context is None
+            or info.context.get("cel_mode", True)
         )
 
-        # CEL disabled -> behave like normal field
+        # NORMAL MODE
         if not use_cel:
-            return v
+            validator = SchemaValidator(normal_schema)
+            return validator.validate_python(v)
 
-        # CEL enabled -> validate only THIS field
-        cel.compile(v)
-        return CommonExpression(v)
+        # CEL MODE
+        expr = str(v)
 
-    return core_schema.with_info_after_validator_function(
-        validator,
-        normal_schema,
+        cel.compile(expr)
+
+        return CommonExpression.model_validate(expr)
+
+    return core_schema.with_info_plain_validator_function(
+        validate,
         serialization=core_schema.plain_serializer_function_ser_schema(
-            lambda v: str(v)
+            lambda v: v.root if isinstance(v, CommonExpression) else v
         ),
     )
+
 
 
 CEL = GetPydanticSchema(cel_schema)
