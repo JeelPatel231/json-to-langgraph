@@ -13,3 +13,14 @@ class BaseExecutableNode[T: BaseModel](BaseNodeModel[str]):
         raise NotImplementedError(
             "Executable nodes must implement the __call__ method."
         )
+
+class BaseConfigurableExecutableNode[T: BaseModel, U: BaseModel](BaseNodeModel[str]):
+    type: Literal["executable"] = "executable"
+    input: T
+    config: U
+
+    def __call__(self, params: T, state: GenericState, config: U):
+        raise NotImplementedError(
+            "Executable nodes must implement the __call__ method."
+        )
+
