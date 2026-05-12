@@ -1,0 +1,41 @@
+from nodes.llm_with_tools import Tool
+from core.db.credentials import CredentialsRepo
+from core.context.global_context import GlobalContext
+from typing import Any
+from pydantic import BaseModel
+
+from core.engine.types import GenericState
+
+
+class LLMArgs(BaseModel):
+    model: str
+    messages: list[dict[str, str]]
+
+
+class LLMNodeFlatConfig(BaseModel):
+    api_key: str
+    knowledge_base: str
+
+
+def LLMNodeFactory(global_ctx: GlobalContext, node_context: LLMNodeFlatConfig):
+    cred_repo = CredentialsRepo(global_ctx.db_connection)
+    llm_creds = cred_repo.get_all(global_ctx.current_user)
+    # use the flat config and initialize all the tools needed.
+
+    # random tool, how do i configure that?
+
+    return LLMNode(config)
+
+
+class LLMNode:
+    @property
+    def __name__(self):
+        return "llm_node"
+
+    def __init__(self, config: LLMNodeFlatConfig, tools: list[Tool]):
+        self.config = config
+        self.tools = tools
+
+    def __call__(self, input: dict[str, Any], state: GenericState) -> dict[str, str]:
+        parsed_input = LLMArgs.model_validate(input)
+        return {"response": "llm_node"}

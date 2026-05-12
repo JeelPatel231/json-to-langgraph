@@ -1,9 +1,5 @@
-from core.types import GenericState
-from core.serializer import JsonToGraphSerializer
-from core.types import WorkflowSpec, global_node_registry
-import nodes
-
-global_node_registry.register_all(nodes.__all__)
+from core.engine.types import GenericState, WorkflowSpec
+from core.engine.serializer import JsonToGraphSerializer
 
 
 def main():
@@ -17,9 +13,16 @@ def main():
 
     runner = realised_workflow.compile()
 
-    print(runner.invoke(GenericState(input={"a": 0})))
-
-    print(runner.invoke(GenericState(input={"a": 1})))
+    print(
+        runner.invoke(
+            GenericState(
+                input={
+                    "model": "gpt-3.5-turbo",
+                    "messages": [{"role": "user", "content": "Hello"}],
+                }
+            )
+        )
+    )
 
 
 if __name__ == "__main__":

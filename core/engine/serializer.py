@@ -1,10 +1,9 @@
+from core.engine.types import Transition
+from pydantic import BaseModel
 from langgraph.graph import StateGraph
 from core.engine.types import (
-    Node,
     CommonExpression,
-    NodeInput,
     ExecutableNode,
-    Transition,
 )
 from core.engine.types import WorkflowSpec, GenericState
 import cel
@@ -22,13 +21,13 @@ class ExpressionEvalRouter:
         return next_routes
 
 
-def evaluate_node_inputs_recursive(node_inputs: NodeInput, state: GenericState):
+def evaluate_node_inputs_recursive(node_inputs: BaseModel, state: GenericState):
     transformed = dict()
-    for key, value in node_inputs.items():
+    for key, value in node_inputs.model_dump().items():
         if isinstance(value, CommonExpression):
             _dumped = state.model_dump()
             transformed[key] = cel.evaluate(value.expr, _dumped)
-        elif isinstance(value, dict):
+        elif isinstance(value, BaseModel):
             transformed[key] = evaluate_node_inputs_recursive(value, state)
         else:
             raise Exception(f"Invalid type {type(value)} for {key}")
@@ -36,14 +35,17 @@ def evaluate_node_inputs_recursive(node_inputs: NodeInput, state: GenericState):
 
 
 class ExecutionNodeCallableWrapper:
-    def __init__(self, node: Node):
-        assert isinstance(node.object, ExecutableNode)
-        self.node_object = node.object
+    def __init__(self, node: ExecutableNode):
         self.node = node
 
     def __call__(self, state: GenericState):
-        evaluated_inputs = evaluate_node_inputs_recursive(self.node_object.input, state)
+        # grabs the model, takes out all the fields and evaluates them recursively
+        evaluated_inputs = evaluate_node_inputs_recursive(self.node.input, state)
+
+        # create a pydantic model from the evaluated fields and pass them to the callback.
         node_output = self.node_object.callback(evaluated_inputs, state)
+
+        # store the output of the node in the state
         state.nodes[self.node.id] = node_output
         return state
 
@@ -53,7 +55,7 @@ class JsonToGraphSerializer:
         workflow = StateGraph(GenericState)
 
         for node in workflow_spec.nodes:
-            if isinstance(node.object, ExecutableNode):
+            if node.type == "executable":
                 wrapper = ExecutionNodeCallableWrapper(node)
                 workflow.add_node(node.id, wrapper)
 

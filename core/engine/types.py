@@ -1,31 +1,31 @@
-from typing import Sequence
-from typing import Annotated, TypeAliasType
+from __future__ import annotations
+
 from typing import Literal
+from typing import Annotated
+from core.engine.state import GenericState
+from typing import Sequence
+from typing import TypeAliasType
 from typing import Callable
 from typing import Any
 from pydantic.fields import Field
 from pydantic import field_validator
 from pydantic import BaseModel
+from pydantic import RootModel
 import cel
 
 
-class GenericState(BaseModel):
-    input: dict[str, Any] = Field(default_factory=dict)
-    nodes: dict[str, Any] = Field(default_factory=dict)
+class CommonExpression(RootModel[str]):
+    root: str = "true"
 
-
-class CommonExpression(BaseModel):
-    expr: str = Field("true", description="CEL expression to evaluate")
-
-    @field_validator("expr")
+    @field_validator("root")
+    @classmethod
     def validate_expression(cls, v: str):
         cel.compile(v)
         return v
 
-
-# these already exist in the graph
-class MarkerNode(BaseModel):
-    type: Literal["marker"] = "marker"
+    @property
+    def expr(self) -> str:
+        return self.root
 
 
 NodeInput = TypeAliasType("NodeInput", dict[str, "CommonExpression | NodeInput"])
@@ -69,27 +69,58 @@ class NodeRegistry:
 global_node_registry = NodeRegistry()
 
 
-class ExecutableNode(BaseModel):
-    type: Literal["executable"] = "executable"
-    guid: str
-    input: NodeInput = Field(default_factory=dict)
-    # config: NodeConfig = Field(default_factory=dict)
-    callback: ExecutableNodeFunction = Field(
-        exclude=True, default_factory=lambda x: global_node_registry.get(x["guid"])
-    )
-
-
 class Transition(BaseModel):
     destination: str
     condition: CommonExpression = Field(default_factory=lambda: CommonExpression())
 
 
-class Node(BaseModel):
-    id: str
-    object: Annotated[ExecutableNode | MarkerNode, Field(discriminator="type")]
-    transitions: list[Transition] = Field(default_factory=list)
-
-
 class WorkflowSpec(BaseModel):
     name: str
     nodes: list[Node]
+
+
+# =========
+
+
+class BaseNodeModel(BaseModel):
+    id: str
+    type: str
+    transitions: list[Transition] = Field(default_factory=list)
+
+
+class TakeInputParams(BaseModel):
+    non_default_param: int
+    prompt: str = Field("Enter a value: ")
+
+
+class BaseExecutableNode(BaseNodeModel):
+    id: str
+    type: Literal["executable"] = "executable"
+
+
+class TakeInputNode(BaseExecutableNode):
+    name: Literal["take_input"] = "take_input"
+    input: TakeInputParams = Field(default_factory=lambda: TakeInputParams())
+
+    def __call__(self, params: TakeInputParams, state: GenericState):
+        print(params.non_default_param)
+        return input(params.prompt)
+
+
+class MarkerNode(BaseNodeModel):
+    type: Literal["marker"] = "marker"
+
+
+class StartNode(MarkerNode):
+    id: Literal["__start__"] = "__start__"
+
+
+class EndNode(MarkerNode):
+    id: Literal["__end__"] = "__end__"
+
+
+MarkerNode = Annotated[StartNode | EndNode, Field(discriminator="id")]
+
+ExecutableNode = Annotated[TakeInputNode, Field(discriminator="name")]
+
+Node = MarkerNode | ExecutableNode
