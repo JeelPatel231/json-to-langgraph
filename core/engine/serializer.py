@@ -1,10 +1,11 @@
-from typing import cast
+from core.engine.nodes.executable.base import BaseExecutableNode
+from core.engine.unions import WorkflowSpec
 
-from core.engine.types import BaseExecutableNode, Transition
+from core.engine.types import Transition
 from pydantic import BaseModel
 from langgraph.graph import StateGraph
 from core.engine.cel import CommonExpression
-from core.engine.types import WorkflowSpec, GenericState
+from core.engine.types import GenericState
 import cel
 
 

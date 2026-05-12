@@ -1,5 +1,6 @@
-from core.engine.types import GenericState, WorkflowSpec
+from core.engine.types import GenericState
 from core.engine.serializer import JsonToGraphSerializer
+from core.engine.unions import WorkflowSpec
 
 
 def main():
