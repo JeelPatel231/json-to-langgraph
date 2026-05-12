@@ -1,10 +1,9 @@
-from core.engine.types import Transition
+from typing import cast
+
+from core.engine.types import BaseExecutableNode, Transition
 from pydantic import BaseModel
 from langgraph.graph import StateGraph
-from core.engine.types import (
-    CommonExpression,
-    ExecutableNode,
-)
+from core.engine.cel import CommonExpression
 from core.engine.types import WorkflowSpec, GenericState
 import cel
 
@@ -23,7 +22,7 @@ class ExpressionEvalRouter:
 
 def evaluate_node_inputs_recursive(node_inputs: BaseModel, state: GenericState):
     transformed = dict()
-    for key, value in node_inputs.model_dump().items():
+    for key, value in node_inputs:
         if isinstance(value, CommonExpression):
             _dumped = state.model_dump()
             transformed[key] = cel.evaluate(value.expr, _dumped)
@@ -34,16 +33,20 @@ def evaluate_node_inputs_recursive(node_inputs: BaseModel, state: GenericState):
     return transformed
 
 
-class ExecutionNodeCallableWrapper:
-    def __init__(self, node: ExecutableNode):
+class ExecutionNodeCallableWrapper[T: BaseModel]:
+    def __init__(self, node: BaseExecutableNode[T]):
         self.node = node
 
     def __call__(self, state: GenericState):
         # grabs the model, takes out all the fields and evaluates them recursively
         evaluated_inputs = evaluate_node_inputs_recursive(self.node.input, state)
 
+        validated_input = self.node.input.model_validate(
+            evaluated_inputs, context={"cel_mode": False}
+        )
+
         # create a pydantic model from the evaluated fields and pass them to the callback.
-        node_output = self.node_object.callback(evaluated_inputs, state)
+        node_output = self.node(validated_input, state)
 
         # store the output of the node in the state
         state.nodes[self.node.id] = node_output
@@ -56,6 +59,7 @@ class JsonToGraphSerializer:
 
         for node in workflow_spec.nodes:
             if node.type == "executable":
+                # node = cast(BaseExecutableNode, node)
                 wrapper = ExecutionNodeCallableWrapper(node)
                 workflow.add_node(node.id, wrapper)
 

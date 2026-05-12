@@ -13,8 +13,7 @@
       "id": "first_node",
       "name": "take_input",
       "input": {
-        "prompt": "Enter a value: ",
-        "non_default_param": 12
+        "prompt": "'Enter a value: '"
       },
       "transitions": [
         {

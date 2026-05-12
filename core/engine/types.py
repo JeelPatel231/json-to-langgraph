@@ -2,125 +2,74 @@ from __future__ import annotations
 
 from typing import Literal
 from typing import Annotated
+from core.engine.cel import CEL, CommonExpression
 from core.engine.state import GenericState
-from typing import Sequence
 from typing import TypeAliasType
-from typing import Callable
-from typing import Any
 from pydantic.fields import Field
-from pydantic import field_validator
 from pydantic import BaseModel
-from pydantic import RootModel
-import cel
-
-
-class CommonExpression(RootModel[str]):
-    root: str = "true"
-
-    @field_validator("root")
-    @classmethod
-    def validate_expression(cls, v: str):
-        cel.compile(v)
-        return v
-
-    @property
-    def expr(self) -> str:
-        return self.root
 
 
 NodeInput = TypeAliasType("NodeInput", dict[str, "CommonExpression | NodeInput"])
 NodeConfig = dict[str, str]
 
-ExecutableNodeFunction = Callable[[dict[str, Any], GenericState], Any]
-
-
-class NodeRegistry:
-    def __init__(self):
-        self._registry: dict[str, ExecutableNodeFunction] = {}
-
-    def list_nodes(self) -> list[str]:
-        return list(self._registry.keys())
-
-    def register(self, guid: str, func: ExecutableNodeFunction):
-        self._registry[guid] = func
-
-    def register_all(
-        self,
-        modules: Sequence[tuple[str, ExecutableNodeFunction] | ExecutableNodeFunction],
-    ):
-        for node in modules:
-            if isinstance(node, tuple):
-                self.register(node[0], node[1])
-            else:
-                self.register(node.__name__, node)
-
-    def __contains__(self, guid: str) -> bool:
-        return guid in self._registry
-
-    def get(self, guid: str) -> ExecutableNodeFunction:
-        callable_func = self._registry.get(guid)
-        if not callable_func:
-            raise ValueError(
-                f"Node with name '{guid}' not found in registry. Available nodes: {self.list_nodes()}"
-            )
-        return self._registry[guid]
-
-
-global_node_registry = NodeRegistry()
-
-
 class Transition(BaseModel):
     destination: str
-    condition: CommonExpression = Field(default_factory=lambda: CommonExpression())
-
-
-class WorkflowSpec(BaseModel):
-    name: str
-    nodes: list[Node]
-
+    condition: CommonExpression = Field(default_factory=lambda: CommonExpression("true"))
 
 # =========
 
 
-class BaseNodeModel(BaseModel):
-    id: str
-    type: str
+class BaseNodeModel[T](BaseModel):
+    id: T
     transitions: list[Transition] = Field(default_factory=list)
 
-
 class TakeInputParams(BaseModel):
-    non_default_param: int
-    prompt: str = Field("Enter a value: ")
+    prompt: Annotated[str, CEL] = Field("Enter a value: ")
 
 
-class BaseExecutableNode(BaseNodeModel):
-    id: str
+class BaseExecutableNode[T: BaseModel](BaseNodeModel[str]):
     type: Literal["executable"] = "executable"
+    input: T
 
+    def __call__(self, params: T, state: GenericState):
+        raise NotImplementedError("Executable nodes must implement the __call__ method.")
 
-class TakeInputNode(BaseExecutableNode):
+class TakeInputNode(BaseExecutableNode[TakeInputParams]):
     name: Literal["take_input"] = "take_input"
-    input: TakeInputParams = Field(default_factory=lambda: TakeInputParams())
 
     def __call__(self, params: TakeInputParams, state: GenericState):
-        print(params.non_default_param)
         return input(params.prompt)
 
+class PrintArgs(BaseModel):
+    text: Annotated[str, CEL]
 
-class MarkerNode(BaseNodeModel):
+class PrintNode(BaseExecutableNode[PrintArgs]):
+    name: Literal["print"] = "print"
+
+    def __call__(self, params: PrintArgs, state: GenericState):
+        print(params.text)
+
+class BaseMarkerNode(BaseNodeModel):
     type: Literal["marker"] = "marker"
 
 
-class StartNode(MarkerNode):
+class StartNode(BaseMarkerNode):
     id: Literal["__start__"] = "__start__"
 
 
-class EndNode(MarkerNode):
+class EndNode(BaseMarkerNode):
     id: Literal["__end__"] = "__end__"
 
 
 MarkerNode = Annotated[StartNode | EndNode, Field(discriminator="id")]
 
-ExecutableNode = Annotated[TakeInputNode, Field(discriminator="name")]
+ExecutableNode = Annotated[TakeInputNode | PrintNode, Field(discriminator="name")]
 
 Node = MarkerNode | ExecutableNode
+
+# ==============
+
+class WorkflowSpec(BaseModel):
+    name: str
+    nodes: list[Node]
+
