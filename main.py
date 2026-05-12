@@ -1,7 +1,9 @@
 from core.types import GenericState
 from core.serializer import JsonToGraphSerializer
-from core.types import WorkflowSpec
-from nodes import *
+from core.types import WorkflowSpec, global_node_registry
+import nodes
+
+global_node_registry.register_all(nodes.__all__)
 
 
 def main():
@@ -14,7 +16,7 @@ def main():
     realised_workflow = serializer.serialize(workflow_spec)
 
     runner = realised_workflow.compile()
-    
+
     print(runner.invoke(GenericState(input={"a": 0})))
 
     print(runner.invoke(GenericState(input={"a": 1})))

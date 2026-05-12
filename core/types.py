@@ -1,3 +1,4 @@
+from typing import Sequence
 from typing import Annotated, TypeAliasType
 from typing import Literal
 from typing import Callable
@@ -6,6 +7,7 @@ from pydantic.fields import Field
 from pydantic import field_validator
 from pydantic import BaseModel
 import cel
+
 
 class GenericState(BaseModel):
     input: dict[str, Any] = Field(default_factory=dict)
@@ -35,24 +37,31 @@ class NodeRegistry:
     def __init__(self):
         self._registry: dict[str, ExecutableNodeFunction] = {}
 
-    def registered_nodes(self) -> list[str]:
+    def list_nodes(self) -> list[str]:
         return list(self._registry.keys())
 
     def register(self, guid: str, func: ExecutableNodeFunction):
         self._registry[guid] = func
 
-    def register_decorator(self, guid: str | None = None):
-        def __inner(func: ExecutableNodeFunction):
-            guid_to_register = guid or func.__name__
-            self.register(guid_to_register, func)
-            return func
+    def register_all(
+        self,
+        modules: Sequence[tuple[str, ExecutableNodeFunction] | ExecutableNodeFunction],
+    ):
+        for node in modules:
+            if isinstance(node, tuple):
+                self.register(node[0], node[1])
+            else:
+                self.register(node.__name__, node)
 
-        return __inner
+    def __contains__(self, guid: str) -> bool:
+        return guid in self._registry
 
     def get(self, guid: str) -> ExecutableNodeFunction:
         callable_func = self._registry.get(guid)
         if not callable_func:
-            raise ValueError(f"Node with name '{guid}' not found in registry. Available nodes: {self.registered_nodes()}")
+            raise ValueError(
+                f"Node with name '{guid}' not found in registry. Available nodes: {self.list_nodes()}"
+            )
         return self._registry[guid]
 
 
@@ -63,7 +72,9 @@ class ExecutableNode(BaseModel):
     type: Literal["executable"] = "executable"
     guid: str
     input: NodeInput = Field(default_factory=dict)
-    callback: ExecutableNodeFunction = Field(exclude=True, default_factory=lambda x: global_node_registry.get(x['guid']))
+    callback: ExecutableNodeFunction = Field(
+        exclude=True, default_factory=lambda x: global_node_registry.get(x["guid"])
+    )
 
 
 class Transition(BaseModel):

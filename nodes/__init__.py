@@ -1,9 +1,5 @@
-# https://stackoverflow.com/a/1057534
-# :verycool:
+from .add_one import add_one
+from .input_node import take_input
+from .print_node import print_node
 
-from os.path import dirname, basename, isfile, join
-import glob
-modules = glob.glob(join(dirname(__file__), "*.py"))
-
-# import EVERYTHING in modules folder
-__all__ = [ basename(f)[:-3] for f in modules if isfile(f) and not basename(f).startswith('__')]
+__all__ = [add_one, take_input, print_node]
