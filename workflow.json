@@ -11,9 +11,12 @@
     },
     {
       "id": "first_node",
-      "name": "take_input",
+      "name": "api_caller",
       "input": {
-        "prompt": "'Enter a value: '"
+        "endpoint": "'https://google.com'"
+      },
+      "config": {
+        "timeout": "10"
       },
       "transitions": [
         {
