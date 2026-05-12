@@ -29,6 +29,7 @@ class MarkerNode(BaseModel):
 
 
 NodeInput = TypeAliasType("NodeInput", dict[str, "CommonExpression | NodeInput"])
+NodeConfig = dict[str, str]
 
 ExecutableNodeFunction = Callable[[dict[str, Any], GenericState], Any]
 
@@ -72,6 +73,7 @@ class ExecutableNode(BaseModel):
     type: Literal["executable"] = "executable"
     guid: str
     input: NodeInput = Field(default_factory=dict)
+    # config: NodeConfig = Field(default_factory=dict)
     callback: ExecutableNodeFunction = Field(
         exclude=True, default_factory=lambda x: global_node_registry.get(x["guid"])
     )

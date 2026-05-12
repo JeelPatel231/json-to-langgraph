@@ -1,11 +1,12 @@
-from core.types import Node
-from core.types import ExecutableNodeFunction
-from core.types import CommonExpression
-from core.types import NodeInput
-from core.types import ExecutableNode
-from core.types import Transition
 from langgraph.graph import StateGraph
-from core.types import WorkflowSpec, GenericState
+from core.engine.types import (
+    Node,
+    CommonExpression,
+    NodeInput,
+    ExecutableNode,
+    Transition,
+)
+from core.engine.types import WorkflowSpec, GenericState
 import cel
 
 

@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from core.types import GenericState
+from core.engine.types import GenericState
 from .utils import pydantic_args
 
 
