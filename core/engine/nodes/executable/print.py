@@ -10,8 +10,9 @@ class PrintArgs(BaseModel):
     text: Annotated[str, CEL]
 
 
-class PrintNode(BaseExecutableNode[PrintArgs]):
+class PrintNode(BaseExecutableNode[PrintArgs, None]):
     name: Literal["print"] = "print"
+    config: None = None
 
-    def __call__(self, params: PrintArgs, state: GenericState):
+    def __call__(self, params: PrintArgs, state: GenericState, config: None):
         print(params.text)

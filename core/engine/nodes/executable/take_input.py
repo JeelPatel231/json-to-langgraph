@@ -10,8 +10,9 @@ class TakeInputParams(BaseModel):
     prompt: Annotated[str, CEL] = Field("Enter a value: ")
 
 
-class TakeInputNode(BaseExecutableNode[TakeInputParams]):
+class TakeInputNode(BaseExecutableNode[TakeInputParams, None]):
     name: Literal["take_input"] = "take_input"
+    config: None = None
 
-    def __call__(self, params: TakeInputParams, state: GenericState):
+    def __call__(self, params: TakeInputParams, state: GenericState, config: None):
         return input(params.prompt)
