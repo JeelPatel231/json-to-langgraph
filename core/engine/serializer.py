@@ -1,3 +1,4 @@
+from core.context.global_context import GlobalContext
 from core.engine.nodes.executable.base import BaseExecutableNode
 from core.engine.unions import WorkflowSpec
 
@@ -5,7 +6,7 @@ from core.engine.types import Transition
 from pydantic import BaseModel
 from langgraph.graph import StateGraph
 from core.engine.cel import CommonExpression
-from core.engine.types import GenericState
+from core.engine.state import GenericState
 import cel
 
 
@@ -35,38 +36,47 @@ def evaluate_node_inputs_recursive(node_inputs: BaseModel, state: GenericState):
 
 
 class ExecutionNodeCallableWrapper[T: BaseModel, U: BaseModel]:
-    def __init__(self, node: BaseExecutableNode[T, U]):
-        self.node = node
+    def __init__(self, node: BaseExecutableNode[T, U], global_context: GlobalContext):
+        self.__node = node
+        self.__global_context = global_context
 
     def __call__(self, state: GenericState):
         # grabs the model, takes out all the fields and evaluates them recursively
-        evaluated_inputs = evaluate_node_inputs_recursive(self.node.input, state)
-        validated_input = self.node.input.model_validate(
+        evaluated_inputs = evaluate_node_inputs_recursive(self.__node.input, state)
+        validated_input = self.__node.input.model_validate(
             evaluated_inputs, context={"cel_mode": False}
         )
 
         validated_config = None
-        if self.node.config is not None:
-            evaluated_config = evaluate_node_inputs_recursive(self.node.config, state)
-            validated_config = self.node.config.model_validate(
+        if self.__node.config is not None:
+            evaluated_config = evaluate_node_inputs_recursive(self.__node.config, state)
+            validated_config = self.__node.config.model_validate(
                 evaluated_config, context={"cel_mode": False}
             )
 
         # create a pydantic model from the evaluated fields and pass them to the callback.
-        node_output = self.node(validated_input, state, validated_config)
+        node_output = self.__node(
+            params=validated_input,
+            state=state,
+            config=validated_config,
+            global_context=self.__global_context,
+        )
 
         # store the output of the node in the state
-        state.nodes[self.node.id] = node_output
+        state.nodes[self.__node.id] = node_output
         return state
 
 
 class JsonToGraphSerializer:
+    def __init__(self, global_context: GlobalContext):
+        self.__global_context = global_context
+
     def serialize(self, workflow_spec: WorkflowSpec) -> StateGraph:
         workflow = StateGraph(GenericState)
 
         for node in workflow_spec.nodes:
             if isinstance(node, BaseExecutableNode):
-                wrapper = ExecutionNodeCallableWrapper(node)
+                wrapper = ExecutionNodeCallableWrapper(node, self.__global_context)
                 workflow.add_node(node.id, wrapper)
 
             if node.transitions:
